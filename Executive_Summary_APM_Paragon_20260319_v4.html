@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fast Risk Review v4 — APM Monaco | Paragon #02-11 Singapore</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --green: #27ae60; --orange: #e67e22; --orange-light: #f39c12;
+    --red: #e74c3c; --dark: #1a1a2e; --blue: #0f3460;
+    --light: #f5f6fa; --text: #333;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--light); color: var(--text); }
+  .container { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
+
+  /* ─── HEADER ─── */
+  .report-header {
+    background: linear-gradient(135deg, var(--dark) 0%, var(--blue) 100%);
+    color: white; border-radius: 14px; padding: 32px 36px 24px;
+    margin-bottom: 20px; position: relative; overflow: hidden;
+  }
+  .report-header::before {
+    content: 'APM'; position: absolute; right: 30px; top: 10px;
+    font-size: 90px; font-weight: 900; opacity: 0.06; letter-spacing: -4px;
+  }
+  .brand { font-size: 13px; font-weight: 700; letter-spacing: 3px; opacity: 0.7; text-transform: uppercase; margin-bottom: 6px; }
+  .report-header h1 { font-size: 22px; font-weight: 800; margin-bottom: 4px; }
+  .tagline { font-size: 13px; opacity: 0.75; }
+  .info-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-top: 18px; }
+  @media (max-width: 800px) { .info-grid { grid-template-columns: repeat(3, 1fr); } }
+  .info-cell { background: rgba(255,255,255,0.1); border-radius: 8px; padding: 10px 12px; }
+  .info-cell .label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.65; display: block; margin-bottom: 4px; }
+  .info-cell .value { font-size: 13px; font-weight: 700; line-height: 1.3; }
+
+  /* ─── V4 CORRECTIONS BOX ─── */
+  .vx-box {
+    background: #fff; border-radius: 12px; padding: 20px 24px;
+    margin-bottom: 20px; border-left: 5px solid #2980b9;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+  }
+  .vx-title { font-size: 14px; font-weight: 700; color: #1a5276; margin-bottom: 12px; }
+  .vx-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .vx-table th { background: #2980b9; color: white; padding: 8px 12px; text-align: left; font-weight: 600; }
+  .vx-table td { padding: 8px 12px; border-bottom: 1px solid #d6eaf8; }
+  .vx-table tr:last-child td { font-weight: 700; background: #eaf3fb; }
+  .vx-table .changed { color: #c0392b; font-weight: 700; }
+  .vx-table .note { font-size: 11px; color: #555; }
+
+  /* ─── SCORE HERO ─── */
+  .score-hero {
+    display: grid; grid-template-columns: auto 1fr auto; gap: 20px; align-items: center;
+    background: linear-gradient(135deg, var(--orange), var(--orange-light));
+    color: white; border-radius: 14px; padding: 28px 32px; margin-bottom: 20px;
+    box-shadow: 0 4px 20px rgba(230,126,34,0.35);
+  }
+  @media (max-width: 700px) { .score-hero { grid-template-columns: 1fr; text-align: center; } }
+  .score-bubble {
+    width: 96px; height: 96px; border-radius: 50%;
+    background: rgba(255,255,255,0.25); border: 3px solid rgba(255,255,255,0.5);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+  }
+  .score-bubble .num { font-size: 34px; font-weight: 900; line-height: 1; }
+  .score-bubble .denom { font-size: 12px; opacity: 0.8; }
+  .score-main h2 { font-size: 21px; font-weight: 800; margin-bottom: 4px; }
+  .score-main .zone { font-size: 14px; opacity: 0.9; margin-bottom: 6px; }
+  .score-main .detail { font-size: 12.5px; opacity: 0.85; line-height: 1.5; max-width: 460px; }
+  .score-routing { background: rgba(255,255,255,0.2); border-radius: 10px; padding: 14px 18px; text-align: center; min-width: 150px; }
+  .score-routing .rt-label { font-size: 11px; opacity: 0.8; text-transform: uppercase; letter-spacing: 1px; }
+  .score-routing .rt-value { font-size: 14px; font-weight: 700; margin: 4px 0; }
+  .score-routing .rt-days { font-size: 12px; opacity: 0.85; }
+
+  /* ─── CARDS & GRID ─── */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+  @media (max-width: 750px) { .two-col { grid-template-columns: 1fr; } }
+  .card { background: white; border-radius: 12px; padding: 22px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+  .card-title {
+    font-size: 14px; font-weight: 700; color: var(--dark);
+    margin-bottom: 16px; padding-bottom: 10px;
+    border-bottom: 2px solid var(--light); display: flex; align-items: center; gap: 8px;
+  }
+
+  /* ─── RISK FLAGS ─── */
+  .risk-flag { display: flex; gap: 12px; margin-bottom: 13px; align-items: flex-start; }
+  .flag-num {
+    min-width: 26px; height: 26px; border-radius: 50%; background: var(--dark);
+    color: white; display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; flex-shrink: 0; margin-top: 1px;
+  }
+  .flag-content .flag-title { font-size: 13px; font-weight: 700; margin-bottom: 3px; }
+  .flag-content .flag-desc { font-size: 12px; color: #666; line-height: 1.5; }
+  .flag-score { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; margin-left: 6px; }
+  .score-high { background: #fadbd8; color: #c0392b; }
+  .score-na { background: #eee; color: #666; }
+
+  /* ─── 10-DIM SUMMARY CARDS ─── */
+  .dim-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 16px; }
+  @media (max-width: 900px) { .dim-grid { grid-template-columns: repeat(3, 1fr); } }
+  .dim-card {
+    border-radius: 10px; padding: 14px; box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    border-top: 4px solid #eee; background: white;
+  }
+  .dim-card.score-low { border-top-color: #27ae60; }
+  .dim-card.score-mid { border-top-color: #f39c12; }
+  .dim-card.score-high2 { border-top-color: #e74c3c; }
+  .dim-num { font-size: 10px; color: #999; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 3px; }
+  .dim-name { font-size: 12px; font-weight: 700; color: var(--dark); margin-bottom: 7px; line-height: 1.3; }
+  .dim-score-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; }
+  .dim-score-val { font-size: 26px; font-weight: 900; }
+  .dim-score-val.low { color: #27ae60; }
+  .dim-score-val.mid { color: #f39c12; }
+  .dim-score-val.high { color: #e74c3c; }
+  .dim-weight { font-size: 11px; color: #999; background: #f0f0f0; padding: 2px 7px; border-radius: 8px; }
+  .dim-bar { height: 5px; border-radius: 3px; background: #eee; overflow: hidden; margin-bottom: 5px; }
+  .dim-bar-fill { height: 100%; border-radius: 3px; }
+  .dim-note { font-size: 11px; color: #777; line-height: 1.4; }
+
+  /* ─── DIM FULL TABLE ─── */
+  .dim-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+  .dim-table th { background: #2c3e50; color: white; padding: 9px 11px; text-align: left; }
+  .dim-table td { padding: 9px 11px; border-bottom: 1px solid #eee; vertical-align: middle; }
+  .dim-table .score-cell { text-align: center; font-weight: 700; font-size: 15px; min-width: 44px; }
+  .dim-table .weight-cell { text-align: center; color: #7f8c8d; min-width: 50px; }
+  .bar { height: 8px; border-radius: 4px; background: #eee; overflow: hidden; min-width: 80px; }
+  .bar-fill { height: 100%; border-radius: 4px; }
+
+  /* ─── COMMERCIAL TERMS ─── */
+  .terms-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 12px; }
+  @media (max-width: 700px) { .terms-grid { grid-template-columns: repeat(2, 1fr); } }
+  .term-cell { background: #f8f9fa; border-radius: 8px; padding: 10px 12px; }
+  .term-cell .t-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px; color: #999; display: block; margin-bottom: 4px; }
+  .term-cell .t-value { font-size: 13px; font-weight: 700; color: var(--dark); line-height: 1.3; }
+
+  /* ─── CONTRACT RISK ─── */
+  .contract-summary { display: flex; gap: 12px; margin-bottom: 16px; }
+  .cs-block { flex: 1; border-radius: 10px; padding: 16px; text-align: center; }
+  .cs-block.good { background: #d5f5e3; }
+  .cs-block.fair { background: #fef9e7; }
+  .cs-block.poor { background: #fadbd8; }
+  .cs-block .cs-count { font-size: 32px; font-weight: 900; }
+  .cs-block.good .cs-count { color: #1e8449; }
+  .cs-block.fair .cs-count { color: #b7950b; }
+  .cs-block.poor .cs-count { color: #c0392b; }
+  .cs-block .cs-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
+  .cs-block .cs-sub { font-size: 10px; color: #888; margin-top: 2px; }
+  .overall-score-row { display: flex; align-items: center; justify-content: space-between; font-size: 13px; font-weight: 600; padding: 10px 14px; background: #f8f9fa; border-radius: 8px; }
+
+  /* ─── FINANCIAL ─── */
+  .fin-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .fin-cell { background: #f8f9fa; border-radius: 8px; padding: 12px 14px; }
+  .fin-cell .f-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px; color: #999; display: block; margin-bottom: 4px; }
+  .fin-cell .f-eur { font-size: 18px; font-weight: 800; color: var(--dark); line-height: 1.2; }
+  .fin-cell .f-sub { font-size: 11px; color: #888; }
+  .fin-cell.warning .f-eur { color: #c0392b; }
+  .fin-cell.ok .f-eur { color: #27ae60; }
+
+  /* ─── LANDLORD ─── */
+  .landlord-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+  .ll-cell { background: #f8f9fa; border-radius: 8px; padding: 12px 14px; }
+  .ll-cell .ll-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px; color: #999; display: block; margin-bottom: 4px; }
+  .ll-cell .ll-value { font-size: 13px; font-weight: 700; color: var(--dark); line-height: 1.4; }
+  .ll-cell .ll-sub { font-size: 11px; color: #888; }
+
+  /* ─── MITIGATION LIST ─── */
+  .mitigation-list { list-style: none; padding: 0; }
+  .mitigation-list li { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid #f0f0f0; align-items: flex-start; }
+  .mitigation-list li:last-child { border-bottom: none; }
+  .mit-num { min-width: 24px; height: 24px; border-radius: 50%; background: var(--blue); color: white; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+  .mit-text { font-size: 13px; line-height: 1.5; }
+
+  /* ─── APPENDIX SECTION HEADER ─── */
+  .section-divider {
+    display: flex; align-items: center; gap: 12px; margin: 30px 0 16px;
+  }
+  .section-divider .divider-line { flex: 1; height: 2px; background: linear-gradient(to right, #0f3460, transparent); }
+  .section-divider .divider-label {
+    font-size: 11px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--blue); white-space: nowrap;
+  }
+
+  /* ─── APPENDIX CARDS ─── */
+  .appendix-card {
+    background: white; border-radius: 12px; padding: 22px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 20px;
+    border-left: 4px solid var(--blue);
+  }
+  .appendix-card h3 { font-size: 15px; font-weight: 700; color: var(--blue); margin-bottom: 14px; }
+  .risk-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .risk-table th { background: #2c3e50; color: white; padding: 9px 12px; text-align: left; font-weight: 600; }
+  .risk-table td { padding: 9px 12px; border-bottom: 1px solid #eee; }
+  .risk-table tr:hover { background: #f8f9fa; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; }
+  .badge.good { background: #d5f5e3; color: #1e8449; }
+  .badge.fair { background: #fef9e7; color: #b7950b; }
+  .badge.poor, .badge.high { background: #fadbd8; color: #c0392b; }
+  .badge.medium { background: #fef9e7; color: #b7950b; }
+  .badge.low { background: #d5f5e3; color: #1e8449; }
+  .pb4-cat-title { font-size: 13px; font-weight: 700; color: var(--dark); margin: 16px 0 8px; padding: 6px 10px; background: #f0f4f8; border-radius: 6px; }
+
+  /* ─── ROUTING TABLE ─── */
+  .routing-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+  .routing-table th { background: #34495e; color: white; padding: 8px 12px; text-align: left; }
+  .routing-table td { padding: 9px 12px; border-bottom: 1px solid #eee; }
+  .routing-table .zone-green { background: #eafaf1; }
+  .routing-table .zone-orange { background: #fef9e7; font-weight: 700; }
+  .routing-table .zone-red { background: #fdedec; }
+
+  /* ─── FOOTER ─── */
+  .disclaimer { background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 14px 20px; margin-top: 20px; font-size: 12px; color: #856404; line-height: 1.6; }
+  .report-footer { text-align: center; padding: 20px 0 10px; font-size: 12px; color: #aaa; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<!-- ══════════════════════════════════════════════
+     HEADER
+══════════════════════════════════════════════ -->
+<div class="report-header">
+  <div class="brand">APM Monaco</div>
+  <h1>Global Retail Lease Fast Risk Review</h1>
+  <div class="tagline">APM Singapore Paragon (#02-11) · 290 Orchard Road, Singapore 238859</div>
+  <div class="info-grid">
+    <div class="info-cell"><span class="label">Store</span><span class="value">APM Singapore Paragon (#02-11)</span></div>
+    <div class="info-cell"><span class="label">Address</span><span class="value">290 Orchard Road, Paragon, Singapore 238859</span></div>
+    <div class="info-cell"><span class="label">Lease Term</span><span class="value">3 years (24 Oct 2026 – 23 Oct 2029) + 2-year option</span></div>
+    <div class="info-cell"><span class="label">Project Type</span><span class="value">Relocation (#02-08 → #02-11)</span></div>
+    <div class="info-cell"><span class="label">Store Type</span><span class="value">Boutique · 570 sqft · Level 2</span></div>
+    <div class="info-cell"><span class="label">Report Date</span><span class="value">19 March 2026 | Version 4</span></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     VERSION HISTORY
+══════════════════════════════════════════════ -->
+<div class="vx-box">
+  <div class="vx-title">Version History — Scoring Corrections from v1</div>
+  <table class="vx-table">
+    <thead>
+      <tr><th>Dimension</th><th>v1 Score</th><th>v4 Score</th><th>Rationale</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>D1: Jurisdiction (Local Legal Risk)</td><td>6</td>
+        <td class="changed">5</td>
+        <td class="note">Singapore Fair Tenancy Framework (voluntary, April 2021) partially improves tenant protections. Updated country risk index March 2026 → score 5 (was over-scored at 6).</td>
+      </tr>
+      <tr>
+        <td>D5: Benchmark vs Peers</td><td>7</td>
+        <td class="changed">8</td>
+        <td class="note">Rent increase 23–28% vs prior lease is clearly "Above Market". Rent-to-sales deteriorated from 19.5% → 22.2% while sales grew only 5.6%. Score 8 correctly reflects above-market positioning.</td>
+      </tr>
+      <tr>
+        <td>D7: Lease Term</td><td>7</td>
+        <td class="changed">4</td>
+        <td class="note">3-year term falls in "1–3 year" band per scoring methodology (score 4, not 7). Methodology band 7 applies to "3–5 years". The +2yr option is an option, not a committed term.</td>
+      </tr>
+      <tr>
+        <td>D10: COPEX (was "COMEX" in v1)</td><td>1</td>
+        <td class="changed">4</td>
+        <td class="note">Relabeled from COMEX to COPEX (Fitting &amp; Fixed Assets). Total COPEX = EUR 209,735 (INIT 174,735 + Display 5,000 + Reinstatement 30,000 — not additive with CAPEX). Proxy payback = 1.86 yr (within lease term) → score 4 (Moderate).</td>
+      </tr>
+      <tr>
+        <td>Composite Score</td><td>5.15</td>
+        <td class="changed">5.39</td>
+        <td class="note">Net +0.24 vs v1. Remains Orange Zone (4.0–6.9). D10 correction (1→4) is the largest improvement; D5 correction (7→8) adds risk; D7 correction (7→4) reduces risk.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     COMPOSITE SCORE HERO
+══════════════════════════════════════════════ -->
+<div class="score-hero">
+  <div class="score-bubble">
+    <div class="num">5.39</div>
+    <div class="denom">/ 10</div>
+  </div>
+  <div class="score-main">
+    <h2>PROCEED WITH CONDITIONS</h2>
+    <div class="zone">● MEDIUM RISK — Orange Zone (4.0–6.9)</div>
+    <div class="detail">Lease viable if key risk mitigations are negotiated before signing. Priority: rent reduction to below SGD 31/sqft, insert 18-month break clause, cap total occupancy cost at 20–22% NTO, add landlord works notice + abatement provisions.</div>
+  </div>
+  <div class="score-routing">
+    <div class="rt-label">Review Routing</div>
+    <div class="rt-value">AI-Assisted Review + BD Negotiation</div>
+    <div class="rt-days">Target: 5–7 business days</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     RADAR + TOP 5 RISKS
+══════════════════════════════════════════════ -->
+<div class="two-col">
+  <div class="card">
+    <div class="card-title">📊 10-Dimension Risk Profile (Interactive Radar)</div>
+    <canvas id="radarChart" height="280"></canvas>
+    <p style="font-size:11px;color:#aaa;text-align:center;margin-top:8px;">Hover over data points to see score, weight, and weighted contribution. Orange = v4 (corrected). Dashed grey = v1 (original).</p>
+  </div>
+  <div class="card">
+    <div class="card-title">🚨 Top 5 Risk Flags</div>
+    <div class="risk-flag">
+      <div class="flag-num">1</div>
+      <div class="flag-content">
+        <div class="flag-title">Very High Rent Burden <span class="flag-score score-high">D9 = 8/10</span></div>
+        <div class="flag-desc">Rent-to-turnover ratio 22.1% (Y1) exceeds 20% threshold. Base rent SGD 32.50/sqft/mth escalating to 34.50 by Y3. Tight operational margins; Y1 net profit negative.</div>
+      </div>
+    </div>
+    <div class="risk-flag">
+      <div class="flag-num">2</div>
+      <div class="flag-content">
+        <div class="flag-title">Above Market vs Benchmark <span class="flag-score score-high">D5 = 8/10</span></div>
+        <div class="flag-desc">23–28% rent increase vs prior lease; rent-to-sales deteriorated from 19.5% to 22.2%; sales growth only 5.6%. Aggressive rent positioning by landlord.</div>
+      </div>
+    </div>
+    <div class="risk-flag">
+      <div class="flag-num">3</div>
+      <div class="flag-content">
+        <div class="flag-title">No Tenant Break Clause <span class="flag-score score-na">D4 — Poor</span></div>
+        <div class="flag-desc">3-year fixed term with zero exit flexibility. Landlord can unilaterally extend by up to 4 months. Combined with COPEX investment, limits strategic options significantly.</div>
+      </div>
+    </div>
+    <div class="risk-flag">
+      <div class="flag-num">4</div>
+      <div class="flag-content">
+        <div class="flag-title">Conditional Possession Risk <span class="flag-score score-na">D4 — Fair</span></div>
+        <div class="flag-desc">Lease conditional on existing tenant vacating by 25 Sep 2026. APM has paid SGD 87,715.50 with no explicit refund guarantee. Non-refund risk if condition fails.</div>
+      </div>
+    </div>
+    <div class="risk-flag">
+      <div class="flag-num">5</div>
+      <div class="flag-content">
+        <div class="flag-title">Landlord Unrestricted Works Rights <span class="flag-score score-na">D4 — Poor</span></div>
+        <div class="flag-desc">No notice requirement or compensation for landlord construction/works. Zero liability for disruption, consequential losses or business interruption. No rent abatement clause.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     10-DIMENSION SUMMARY CARDS
+══════════════════════════════════════════════ -->
+<div class="card" style="margin-bottom:20px;">
+  <div class="card-title">📋 10-Dimension Risk &amp; Value — Summary Cards</div>
+  <div class="dim-grid">
+    <div class="dim-card score-mid">
+      <div class="dim-num">Dimension 1</div>
+      <div class="dim-name">Jurisdiction (Local Legal Risk)</div>
+      <div class="dim-score-row"><div class="dim-score-val mid">5</div><span class="dim-weight">15%</span></div>
+      <div class="dim-bar"><div class="dim-bar-fill" style="width:50%;background:#f39c12;"></div></div>
+      <div class="dim-note">Fair Tenancy Framework; no statutory renewal; landlord structural advantage</div>
+    </div>
+    <div class="dim-card score-low">
+      <div class="dim-num">Dimension 2</div>
+      <div class="dim-name">Landlord / Lender Reputation</div>
+      <div class="dim-score-row"><div class="dim-score-val low">2</div><span class="dim-weight">10%</span></div>
+      <div class="dim-bar"><div class="dim-bar-fill" style="width:20%;background:#27ae60;"></div></div>
+      <div class="dim-note">SPH REIT — institutional, clean DD, no litigation flags</div>
+    </div>
+    <div class="dim-card score-low">
+      <div class="dim-num">Dimension 3</div>
+      <div class="dim-name">Building / Property</div>
+      <div class="dim-score-row"><div class="dim-score-val low">2</div><span class="dim-weight">5%</span></div>
+      <div class="dim-bar"><div class="dim-bar-fill" style="width:20%;background:#27ae60;"></div></div>
+      <div class="dim-note">Prime Orchard Road; no redevelopment; premium tenant mix</div>
+    </div>
+    <div class="dim-card score-mid">
+      <div class="dim-num">Dimension 4</div>
+      <div class="dim-name">Contract Terms</div>
+      <div class="dim-score-row"><div class="dim-score-val mid">6</div><span class="dim-weight">15%</span></div>
+      <div class="dim-bar"><div class="dim-bar-fill" style="width:60%;background:#f39c12;"></div></div>
+      <div class="dim-note">16 Good / 27 Fair / 6 Poor — landlord-skewed template</div>
+    </div>
+    <div class="dim-card score-high2">
+      <div class="dim-num">Dimension 5</div>
+      <div class="dim-name">Benchmark vs Peers</div>
+      <div class="dim-score-row"><div class="dim-score-val high">8</div><span class="dim-weight">10%</span></div>
+      <div class="dim-bar"><div class="dim-bar-fill" style="width:80%;background:#e74c3c;"></div></div>
+      <div class="dim-note">23–28% rent increase vs prior lease; above market</div>
+    </div>
+    <div class="dim-card score-mid">
+      <div class="dim-num">Dimension 6</div>
+      <div class="dim-name">Store Type (Value)</div>
+      <div class="dim-score-row"><div class="dim-score-val mid">7</div><span class="dim-weight">8%</span></div>
+      <div class="dim-bar"><div class="dim-bar-fill" style="width:70%;background:#f39c12;"></div></div>
+      <div class="dim-note">Boutique 570 sqft; strong brand presence on Orchard Road</div>
+    </div>
+    <div class="dim-card score-low">
+      <div class="dim-num">Dimension 7</div>
+      <div class="dim-name">Lease Term</div>
+      <div class="dim-score-row"><div class="dim-score-val low">4</div><span class="dim-weight">7%</span></div>
+      <div class="dim-bar"><div class="dim-bar-fill" style="width:40%;background:#27ae60;"></div></div>
+      <div class="dim-note">3-year = "1–3 yr" band (score 4); +2yr option is discretionary</div>
+    </div>
+    <div class="dim-card score-mid">
+      <div class="dim-num">Dimension 8</div>
+      <div class="dim-name">Store Grade (Est. Yearly TO)</div>
+      <div class="dim-score-row"><div class="dim-score-val mid">6</div><span class="dim-weight">10%</span></div>
+      <div class="dim-bar"><div class="dim-bar-fill" style="width:60%;background:#f39c12;"></div></div>
+      <div class="dim-note">G5 store grade; EUR ~750K/yr; mid-tier revenue</div>
+    </div>
+    <div class="dim-card score-high2">
+      <div class="dim-num">Dimension 9</div>
+      <div class="dim-name">Est. Yearly Rent</div>
+      <div class="dim-score-row"><div class="dim-score-val high">8</div><span class="dim-weight">10%</span></div>
+      <div class="dim-bar"><div class="dim-bar-fill" style="width:80%;background:#e74c3c;"></div></div>
+      <div class="dim-note">Rent-to-TO ~22.1% Y1; exceeds 20% "very high" threshold</div>
+    </div>
+    <div class="dim-card score-mid">
+      <div class="dim-num">Dimension 10</div>
+      <div class="dim-name">COPEX (Fitting &amp; Fixed Assets)</div>
+      <div class="dim-score-row"><div class="dim-score-val mid">4</div><span class="dim-weight">10%</span></div>
+      <div class="dim-bar"><div class="dim-bar-fill" style="width:40%;background:#f39c12;"></div></div>
+      <div class="dim-note">EUR 209,735 total; proxy payback 1.86 yr — within lease term</div>
+    </div>
+  </div>
+
+  <!-- Full dim table -->
+  <table class="dim-table">
+    <thead>
+      <tr><th>#</th><th>Dimension</th><th class="weight-cell">Weight</th><th class="score-cell">Score</th><th class="score-cell">Wtd</th><th style="min-width:90px;">Bar</th><th>Notes</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>1</td><td>Jurisdiction (Local Legal Risk)</td><td class="weight-cell">15%</td><td class="score-cell" style="color:#f39c12;">5</td><td class="score-cell">0.75</td><td><div class="bar"><div class="bar-fill" style="width:50%;background:#f39c12;"></div></div></td><td>Singapore: Fair Tenancy Framework (2021) voluntary code; improving but landlord holds structural advantage. Score 5 per Country Risk Index updated March 2026.</td></tr>
+      <tr><td>2</td><td>Landlord / Lender Reputation</td><td class="weight-cell">10%</td><td class="score-cell" style="color:#27ae60;">2</td><td class="score-cell">0.20</td><td><div class="bar"><div class="bar-fill" style="width:20%;background:#27ae60;"></div></div></td><td>CPI Paragon Trust (SPH REIT) — blue-chip REIT, clean corporate status, no material litigation, transparent ownership. Low risk.</td></tr>
+      <tr><td>3</td><td>Building / Property</td><td class="weight-cell">5%</td><td class="score-cell" style="color:#27ae60;">2</td><td class="score-cell">0.10</td><td><div class="bar"><div class="bar-fill" style="width:20%;background:#27ae60;"></div></div></td><td>Paragon: prime Orchard Road mall, premium tenant mix (luxury/fashion), clear title via trust structure, no material planning risks. Low risk.</td></tr>
+      <tr><td>4</td><td>Contract Terms</td><td class="weight-cell">15%</td><td class="score-cell" style="color:#f39c12;">6</td><td class="score-cell">0.90</td><td><div class="bar"><div class="bar-fill" style="width:60%;background:#f39c12;"></div></div></td><td>Mixed: 16 Good, 27 Fair, 6 Poor. Key Poor: no break clause, broad indemnity, unilateral landlord works, conditional possession with no refund guarantee.</td></tr>
+      <tr><td>5</td><td>Benchmark vs Peers</td><td class="weight-cell">10%</td><td class="score-cell" style="color:#e74c3c;">8</td><td class="score-cell">0.80</td><td><div class="bar"><div class="bar-fill" style="width:80%;background:#e74c3c;"></div></div></td><td>Rent up ~23–28% vs prior lease. Rent-to-sales deteriorated 19.5% → 22.2%. Sales growth +5.6% does not justify rent increase. Above Market / Landlord-Favourable.</td></tr>
+      <tr><td>6</td><td>Store Type (Value)</td><td class="weight-cell">8%</td><td class="score-cell" style="color:#2980b9;">7</td><td class="score-cell">0.56</td><td><div class="bar"><div class="bar-fill" style="width:70%;background:#2980b9;"></div></div></td><td>Boutique: significant brand presence on Orchard Road. Higher strategic value justifies moderate risk acceptance.</td></tr>
+      <tr><td>7</td><td>Lease Term</td><td class="weight-cell">7%</td><td class="score-cell" style="color:#f39c12;">4</td><td class="score-cell">0.28</td><td><div class="bar"><div class="bar-fill" style="width:40%;background:#f39c12;"></div></div></td><td>3-year term falls in "1–3 years" band per methodology (score 4). Moderate commitment. Absence of break clause reduces exit flexibility within this period.</td></tr>
+      <tr><td>8</td><td>Store Grade (Est. Yearly TO)</td><td class="weight-cell">10%</td><td class="score-cell" style="color:#f39c12;">6</td><td class="score-cell">0.60</td><td><div class="bar"><div class="bar-fill" style="width:60%;background:#f39c12;"></div></div></td><td>Budget EUR 750,000 (~SGD 1.13M). Approximate G5–G6 level. Mid-tier turnover for a Singapore boutique.</td></tr>
+      <tr><td>9</td><td>Est. Yearly Rent</td><td class="weight-cell">10%</td><td class="score-cell" style="color:#e74c3c;">8</td><td class="score-cell">0.80</td><td><div class="bar"><div class="bar-fill" style="width:80%;background:#e74c3c;"></div></div></td><td>Rent-to-TO = 21.6% (Yr1). Total annual rent SGD 233,100 vs projected NTO SGD 1,080,000. Very high burden — above 20% threshold.</td></tr>
+      <tr><td>10</td><td>COPEX (Fitting &amp; Fixed Assets)</td><td class="weight-cell">10%</td><td class="score-cell" style="color:#f39c12;">4</td><td class="score-cell">0.40</td><td><div class="bar"><div class="bar-fill" style="width:40%;background:#f39c12;"></div></div></td><td>Total COPEX EUR 209,735 (INIT 174,735 + Display 5,000 + Reinstatement 30,000). Proxy payback = 1.86 yrs (EUR 209,735 ÷ (EUR 750,000 × 15%)). Moderate — within lease term.</td></tr>
+    </tbody>
+    <tfoot>
+      <tr style="background:#f0f0f0;font-weight:700;"><td colspan="3">Composite Weighted Score</td><td class="score-cell" style="font-size:18px;">—</td><td class="score-cell" style="font-size:18px;color:#e67e22;">5.39</td><td colspan="2">Orange Zone (4.0–6.9) — Proceed with Conditions</td></tr>
+    </tfoot>
+  </table>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     COMMERCIAL TERMS + CONTRACT RISK
+══════════════════════════════════════════════ -->
+<div class="two-col">
+  <div class="card">
+    <div class="card-title">📋 Key Commercial Terms Summary</div>
+    <div class="terms-grid">
+      <div class="term-cell"><span class="t-label">Base Rent (SGD/psf/mth)</span><span class="t-value">Y1: 32.50 | Y2: 33.50 | Y3: 34.50</span></div>
+      <div class="term-cell"><span class="t-label">Additional Rent</span><span class="t-value">1% of monthly NTO</span></div>
+      <div class="term-cell"><span class="t-label">Service Charge (psf/mth)</span><span class="t-value">SGD 2.00</span></div>
+      <div class="term-cell"><span class="t-label">A&amp;P Contribution (psf/mth)</span><span class="t-value">SGD 0.50</span></div>
+      <div class="term-cell"><span class="t-label">Total Monthly (Y1)</span><span class="t-value">SGD 21,745.50 + 1% NTO</span></div>
+      <div class="term-cell"><span class="t-label">Projected NTO</span><span class="t-value">SGD 90,000/mth (non-binding)</span></div>
+      <div class="term-cell"><span class="t-label">Security Deposit</span><span class="t-value">SGD 65,970</span></div>
+      <div class="term-cell"><span class="t-label">Fitting Out Deposit</span><span class="t-value">SGD 5,000 (refundable)</span></div>
+      <div class="term-cell"><span class="t-label">Rent-Free Period</span><span class="t-value">4 weeks (with claw-back)</span></div>
+      <div class="term-cell"><span class="t-label">Late Opening Penalty</span><span class="t-value">SGD 722.96/day</span></div>
+      <div class="term-cell"><span class="t-label">Business Hours</span><span class="t-value">10:00 AM – 9:00 PM daily</span></div>
+      <div class="term-cell"><span class="t-label">Possession Condition</span><span class="t-value">Prior tenant vacates by 25 Sep 2026</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📑 Contract Risk Profile</div>
+    <div class="contract-summary">
+      <div class="cs-block good"><div class="cs-count">16</div><div class="cs-label">Favorable</div><div class="cs-sub">out of 49 items</div></div>
+      <div class="cs-block fair"><div class="cs-count">27</div><div class="cs-label">Fair</div><div class="cs-sub">out of 49 items</div></div>
+      <div class="cs-block poor"><div class="cs-count">6</div><div class="cs-label">Unfavorable</div><div class="cs-sub">out of 49 items</div></div>
+    </div>
+    <div class="overall-score-row">
+      <span>Overall Contract Score</span>
+      <strong style="color:#e67e22;">6/10 — Mixed</strong>
+    </div>
+    <div style="margin-top:14px;font-size:12px;color:#666;line-height:1.7;">
+      <strong style="color:#c0392b;">6 Poor items:</strong> No tenant break clause (3-yr lock-in), unilateral landlord extension up to 4 months, full reinstatement "to landlord's satisfaction", late opening penalty SGD 722.96/day, broad indemnity covering landlord's legal costs, unrestricted landlord works right with no compensation.<br><br>
+      <strong style="color:#b7950b;">Key Fair items to negotiate:</strong> 1% NTO turnover rent (not capped), no explicit refund guarantee on SGD 87,715.50 advance, service charge adjustable by landlord notice, limited abatement rights.
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     FINANCIAL + LANDLORD
+══════════════════════════════════════════════ -->
+<div class="two-col">
+  <div class="card">
+    <div class="card-title">💰 Financial Overview &amp; PNL Simulation</div>
+    <div class="fin-grid">
+      <div class="fin-cell"><span class="f-label">Year 1 Turnover</span><div class="f-eur">EUR 750,000</div><div class="f-sub">SGD ~1,080,000 (est. FX)</div></div>
+      <div class="fin-cell"><span class="f-label">Year 1 EBITDA</span><div class="f-eur">EUR 67,022</div><div class="f-sub">8.94% EBITDA margin</div></div>
+      <div class="fin-cell warning"><span class="f-label">Year 1 Net Profit</span><div class="f-eur">EUR −2,890</div><div class="f-sub">Negative (depreciation impact)</div></div>
+      <div class="fin-cell ok"><span class="f-label">Year 5 Net Profit</span><div class="f-eur">EUR 97,351</div><div class="f-sub">11.7% margin (post-depreciation)</div></div>
+      <div class="fin-cell"><span class="f-label">Total COPEX</span><div class="f-eur">EUR 209,735</div><div class="f-sub">INIT 174,735 + Display 5,000 + Reinstatement 30,000</div></div>
+      <div class="fin-cell"><span class="f-label">COPEX Proxy Payback</span><div class="f-eur">1.86 Years</div><div class="f-sub" style="color:#27ae60;font-weight:600;">✓ Within 3-year lease term</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🏢 Property &amp; Landlord Profile</div>
+    <div class="landlord-grid">
+      <div class="ll-cell"><span class="ll-label">Landlord Entity</span><span class="ll-value">CPI Paragon Trustee Pte. Ltd.</span><span class="ll-sub">SPH REIT — Institutional. Low Risk.</span></div>
+      <div class="ll-cell"><span class="ll-label">Property</span><span class="ll-value">Paragon, Orchard Road</span><span class="ll-sub">Prime location, top-tier Singapore mall</span></div>
+      <div class="ll-cell"><span class="ll-label">Redevelopment</span><span class="ll-value">None (Active)</span><span class="ll-sub">No major capex risk; stable occupancy</span></div>
+    </div>
+    <div style="margin-bottom:10px;font-size:12px;color:#555;line-height:1.7;">
+      <strong>Category B — Institutional-grade counterparty.</strong> SPH REIT / Cuscaden Peak-backed Paragon Trust. Flagship Orchard Road asset with strong luxury tenant mix. No AML concerns, no sanctions, transparent ownership, no litigation flags. DD conclusion: clean.
+    </div>
+    <div class="overall-score-row">
+      <span>Landlord Score</span><strong style="color:#27ae60;">2/10 (Low Risk)</strong>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     RISK MITIGATION PRIORITIES
+══════════════════════════════════════════════ -->
+<div class="card" style="margin-bottom:20px;">
+  <div class="card-title">✅ Risk Mitigation Priorities (Negotiation Focus)</div>
+  <ul class="mitigation-list">
+    <li><div class="mit-num">1</div><div class="mit-text"><strong>Negotiate rent reduction to SGD 30–31/sqft</strong> to bring rent-to-turnover below 20% threshold and improve operational viability. Request stepped rent for first 6 months at reduced rate.</div></li>
+    <li><div class="mit-num">2</div><div class="mit-text"><strong>Insert 18-month break clause</strong> with 6 months' written notice. If full break not achievable, negotiate mutual termination right with 3-month rent penalty.</div></li>
+    <li><div class="mit-num">3</div><div class="mit-text"><strong>Cap total occupancy cost</strong> (base + turnover rent + SC + A&P) at 20–22% of NTO to establish a predictable ceiling and protect margins.</div></li>
+    <li><div class="mit-num">4</div><div class="mit-text"><strong>Add 30-day written notice requirement</strong> for landlord works, restrict major works to non-business hours, and insert rent abatement clause for material disruption (&gt;48 hrs affecting business).</div></li>
+    <li><div class="mit-num">5</div><div class="mit-text"><strong>Secure explicit written guarantee</strong> for full refund of all monies paid (SGD 87,715.50+) if vacant possession condition fails by 25 Sep 2026 long-stop date.</div></li>
+    <li><div class="mit-num">6</div><div class="mit-text"><strong>Limit tenant indemnity to direct losses from tenant's own negligence or breach;</strong> exclude consequential losses; remove obligation to pay landlord's legal costs.</div></li>
+    <li><div class="mit-num">7</div><div class="mit-text"><strong>Establish Schedule of Condition at handover;</strong> negotiate reinstatement cap or dilapidation payment option in lieu of full physical reinstatement to reduce exit cost exposure.</div></li>
+  </ul>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     APPENDICES DIVIDER
+══════════════════════════════════════════════ -->
+<div class="section-divider">
+  <div class="divider-line"></div>
+  <div class="divider-label">Detailed Appendices — Playbooks #1 – #6</div>
+  <div class="divider-line" style="background:linear-gradient(to left,#0f3460,transparent);"></div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     APPENDIX A — BASIC INFO (PB#1)
+══════════════════════════════════════════════ -->
+<div class="appendix-card">
+  <h3>Appendix A — Basic Lease Information (PB#1)</h3>
+  <table class="risk-table">
+    <tbody>
+      <tr><td style="width:220px;font-weight:600;">Property Address</td><td>Unit #02-11, Paragon, 290 Orchard Road, Singapore 238859</td></tr>
+      <tr><td style="font-weight:600;">Landlord</td><td>CPI Paragon Trustee Pte. Ltd. (as trustee of Paragon Trust), via attorney Straits Retail Property Management Services Pte. Ltd.</td></tr>
+      <tr><td style="font-weight:600;">Tenant</td><td>APM Retail (Singapore) Pte. Ltd.</td></tr>
+      <tr><td style="font-weight:600;">Permitted Use</td><td>Retail sale of fashion jewellery under the shop name and concept of "APM Monaco"</td></tr>
+      <tr><td style="font-weight:600;">Surveyed Area</td><td>570 sq ft (53 sq m) — certified by Registered Surveyor</td></tr>
+      <tr><td style="font-weight:600;">Lease Term</td><td>3 years: Est. 24 October 2026 to 23 October 2029</td></tr>
+      <tr><td style="font-weight:600;">Further Term</td><td>2 years on mutually agreed terms (Option to Renew)</td></tr>
+      <tr><td style="font-weight:600;">Date of Possession</td><td>26 September 2026 (conditional on existing tenant vacating by 25 Sep 2026)</td></tr>
+      <tr><td style="font-weight:600;">Rent Commencement</td><td>Est. 24 October 2026 (or earlier commencement of business)</td></tr>
+      <tr><td style="font-weight:600;">Rent-Free Fitting Out</td><td>Up to 4 weeks from Date of Possession</td></tr>
+      <tr><td style="font-weight:600;">Base Rent</td><td>Y1: SGD 32.50/sqft/mth (SGD 18,525/mth) | Y2: SGD 33.50 (SGD 19,095) | Y3: SGD 34.50 (SGD 19,665)</td></tr>
+      <tr><td style="font-weight:600;">Additional Rent</td><td>1.00% of monthly NTO</td></tr>
+      <tr><td style="font-weight:600;">Service Charge</td><td>SGD 2.00/sqft/mth (SGD 1,140/mth)</td></tr>
+      <tr><td style="font-weight:600;">A&amp;P Contribution</td><td>SGD 0.50/sqft/mth (SGD 285/mth)</td></tr>
+      <tr><td style="font-weight:600;">Projected NTO</td><td>SGD 90,000/month (not a binding target)</td></tr>
+      <tr><td style="font-weight:600;">Security Deposit</td><td>SGD 65,970.00</td></tr>
+      <tr><td style="font-weight:600;">Additional Security Deposit</td><td>SGD 65,970.00 (if Min Paid-Up Capital of SGD 300,000 not maintained)</td></tr>
+      <tr><td style="font-weight:600;">Fitting Out Deposit</td><td>SGD 5,000.00 (refundable)</td></tr>
+      <tr><td style="font-weight:600;">Insurance</td><td>Public liability ≥ SGD 2,000,000 per occurrence + plate glass + fire/flood/water/burglary</td></tr>
+      <tr><td style="font-weight:600;">Business Hours</td><td>10:00 am to 9:00 pm daily (except 1st &amp; 2nd day of CNY)</td></tr>
+      <tr><td style="font-weight:600;">Liquidated Damages</td><td>SGD 722.96 per day for failure to open</td></tr>
+      <tr><td style="font-weight:600;">Store Type</td><td>Boutique</td></tr>
+      <tr><td style="font-weight:600;">Project Status</td><td>Relocation (from existing Paragon unit #02-08)</td></tr>
+      <tr><td style="font-weight:600;">LOO Date</td><td>13 February 2026 (signed 3 March 2026 by CFO Ingrid Higueras)</td></tr>
+      <tr><td style="font-weight:600;">Total COPEX</td><td>EUR 209,735 (INIT EUR 174,735 + Display EUR 5,000 + Reinstatement EUR 30,000)</td></tr>
+      <tr><td style="font-weight:600;">Projected Y1 Turnover</td><td>EUR 750,000 (~SGD 1,130,000)</td></tr>
+      <tr><td style="font-weight:600;">Projected Y1 EBITDA</td><td>EUR 67,022 (8.94% of sales)</td></tr>
+      <tr><td style="font-weight:600;">COPEX Proxy Payback</td><td>1.86 years (EUR 209,735 ÷ (EUR 750,000 × 15%))</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     APPENDIX B — LOCAL LAW (PB#2)
+══════════════════════════════════════════════ -->
+<div class="appendix-card">
+  <h3>Appendix B — Local Law &amp; Country Risk: Singapore (PB#2)</h3>
+  <p style="margin-bottom:12px;font-size:13px;color:#666;">Tenant Risk Index: <strong style="color:#f39c12;">5 / 10</strong> (Medium Risk — Mixed regime; Fair Tenancy Framework improving but landlord still holds structural advantage)</p>
+  <table class="risk-table">
+    <thead><tr><th>Category</th><th>Key Points</th><th>Impact</th><th>Remarks</th></tr></thead>
+    <tbody>
+      <tr><td>Legal Framework</td><td>No specific retail lease statute. Governed by common law + Code of Conduct for Leasing of Retail Premises (1 April 2021, voluntary compliance encouraged by MTI).</td><td><span class="badge medium">Medium</span></td><td>Code of Conduct is not legally binding but provides fair leasing principles. Landlord compliance expected for major malls.</td></tr>
+      <tr><td>Lease Structure</td><td>Standard LOO + Specimen Lease Agreement model. LOO is binding upon acceptance. LA to be executed within 14 days of receipt.</td><td><span class="badge low">Low</span></td><td>Standard Singapore retail lease structure. Dual-document approach is market practice.</td></tr>
+      <tr><td>Rent Review</td><td>Fixed annual escalation (contractual step-ups). No open market rent review mechanism in this lease.</td><td><span class="badge low">Low</span></td><td>Fixed escalation provides certainty. ~3% annual increase is within market range.</td></tr>
+      <tr><td>Break Clause</td><td>No statutory right to break. Entirely contractual. This lease contains NO tenant break option.</td><td><span class="badge high">High</span></td><td>Tenant locked in for full 3-year term. Must negotiate break clause separately.</td></tr>
+      <tr><td>Service Charge</td><td>Code of Conduct requires landlords to provide detailed breakdown. Aggregate cap provision in LOO (Base Rent + SC + A&amp;P shall not increase post SC/A&amp;P adjustment).</td><td><span class="badge low">Low</span></td><td>Aggregate cap is a protective provision. SGD 2.00/sqft is within market range for Orchard Road.</td></tr>
+      <tr><td>Business Rates / Property Tax</td><td>Property tax passed to tenant (Cl D3). Assessed by Chief Assessor under Property Tax Act 1960.</td><td><span class="badge medium">Medium</span></td><td>Standard market practice in Singapore. Amount may increase with property value reassessment.</td></tr>
+      <tr><td>Turnover Rent / Audit</td><td>1% NTO additional rent. Monthly reporting with daily breakdown via Tenant Portal. Landlord audit right (Cl D1.4) with 3-day notice; cost to tenant if understatement &gt;3%.</td><td><span class="badge medium">Medium</span></td><td>1% is low by market standards. Audit provisions are fairly standard but reporting burden is significant.</td></tr>
+      <tr><td>Indemnity</td><td>Broad tenant indemnity covering landlord's legal costs, consequential losses. No mutual indemnity.</td><td><span class="badge high">High</span></td><td>One-sided. Negotiate to limit to direct losses from tenant's negligence or breach.</td></tr>
+      <tr><td>Environmental / ESG</td><td>No specific ESG obligations in lease. Singapore Green Plan 2030 may introduce future requirements.</td><td><span class="badge low">Low</span></td><td>No immediate compliance burden. Monitor regulatory developments.</td></tr>
+      <tr><td>Cultural / Market Practice</td><td>Orchard Road retail is highly competitive. Paragon positions as upper-mid to premium. Standard for landlord to use template LA with limited negotiation on structural terms.</td><td><span class="badge medium">Medium</span></td><td>Limited negotiation leverage on standard LA clauses. Focus on LOO commercial terms and Schedule 4 special conditions.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     APPENDIX C — DD (PB#3)
+══════════════════════════════════════════════ -->
+<div class="appendix-card">
+  <h3>Appendix C — Property &amp; Landlord Due Diligence (PB#3)</h3>
+  <p style="margin-bottom:12px;font-size:13px;"><strong>Landlord Risk:</strong> <span class="badge low">Low (Score 2)</span> &nbsp; <strong>Building Risk:</strong> <span class="badge low">Low (Score 2)</span> &nbsp; <strong>DD Conclusion:</strong> <span class="badge good">Proceed</span></p>
+  <table class="risk-table">
+    <thead><tr><th>Category</th><th>Finding</th><th>Risk</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Title &amp; Ownership</strong></td><td>Property held by CPI Paragon Trustee Pte. Ltd. as trustee of Paragon Trust. Trust structure transparent. Paragon Trust is part of SPH REIT (now Cuscaden Peak/Keppel).</td><td><span class="badge low">Low</span></td><td>Blue-chip REIT structure. Clear beneficial ownership chain.</td></tr>
+      <tr><td><strong>Planning &amp; Development</strong></td><td>No known major redevelopment plans. Paragon is an established, well-maintained Orchard Road shopping centre. Property status: Existing Mall, not under reconstruction.</td><td><span class="badge low">Low</span></td><td>Per LOO keypoints: "Property under Reconstruction: No".</td></tr>
+      <tr><td><strong>Tenant Mix</strong></td><td>Premium retail and F&amp;B tenant mix. International luxury and fashion brands concentrated on Levels 1–3. Fashion jewellery has limited direct competition within the mall.</td><td><span class="badge low">Low</span></td><td>Strong alignment with APM Monaco brand positioning. Level 2 unit near lift well provides reasonable foot traffic.</td></tr>
+      <tr><td><strong>Landlord Corporate Status</strong></td><td>CPI Paragon Trustee Pte. Ltd. (UEN 202533266C). Registered office: 135 Cecil Street, #10-01, Philippine Airline Building, Singapore 069536. Managed by Straits Retail Property Management (UEN 201016658W).</td><td><span class="badge low">Low</span></td><td>Corporate status verified. Major institutional landlord.</td></tr>
+      <tr><td><strong>AML / Sanctions</strong></td><td>No AML flags. No sanctions hits identified for landlord entities. Paragon Trust is regulated under MAS as a trust structure.</td><td><span class="badge low">Low</span></td><td>Clean compliance profile.</td></tr>
+      <tr><td><strong>Litigation &amp; Insolvency</strong></td><td>Per LOO keypoints: "LL or Actual Controller involving Major litigation: No". "LL or Related Party under Financial Crisis: No".</td><td><span class="badge low">Low</span></td><td>No material litigation or financial distress flags.</td></tr>
+      <tr><td><strong>Reputation</strong></td><td>Straits Retail / Paragon Trust has strong market reputation as professional retail property manager on Orchard Road. LOO keypoints note Landlord Category: "B" with note about late payment situations for stores using LL POS.</td><td><span class="badge low">Low</span></td><td>Category "B" may indicate minor operational friction but overall reputation is solid.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     APPENDIX D — CONTRACT REVIEW (PB#4)
+══════════════════════════════════════════════ -->
+<div class="appendix-card">
+  <h3>Appendix D — Contract Risk Review Summary (PB#4)</h3>
+  <p style="margin-bottom:8px;font-size:13px;">Profile: <strong>16 Good</strong> | <strong>27 Fair</strong> | <strong>6 Poor</strong> out of 49 items → <span class="badge fair">Mixed (Score 6)</span></p>
+
+  <div class="pb4-cat-title">Category 1 — Location Related (8 items): 6 Good, 2 Fair</div>
+  <table class="risk-table">
+    <thead><tr><th style="width:180px;">Item</th><th>Clause</th><th>Rating</th><th>Key Point</th></tr></thead>
+    <tbody>
+      <tr><td>Location</td><td>LOO §1, Sch 1</td><td><span class="badge good">Good</span></td><td>Prime Orchard Road, Paragon Level 2</td></tr>
+      <tr><td>Premises Description</td><td>LOO §1, Sch 1.1</td><td><span class="badge good">Good</span></td><td>Unit #02-11, clearly identified on floor plan</td></tr>
+      <tr><td>Landlord/Lessor</td><td>LOO preamble</td><td><span class="badge good">Good</span></td><td>CPI Paragon Trustee via Straits Retail — clear identity</td></tr>
+      <tr><td>Tenant</td><td>LOO preamble</td><td><span class="badge good">Good</span></td><td>APM Retail (Singapore) Pte. Ltd.</td></tr>
+      <tr><td>Size/Area</td><td>Sch 1.1</td><td><span class="badge good">Good</span></td><td>570 sqft surveyed — registered surveyor certificate attached</td></tr>
+      <tr><td>Area Measurement</td><td>LA Cl A1</td><td><span class="badge good">Good</span></td><td>Registered surveyor determines final area; certificate is final and conclusive</td></tr>
+      <tr><td>Area Tolerance</td><td>LA Cl A1.3</td><td><span class="badge fair">Fair</span></td><td>5% tolerance — if &gt;5% larger, rent capped at 105% of estimated. If smaller, rent adjusted down. Asymmetric but with cap.</td></tr>
+      <tr><td>Boundary Definition</td><td>Floor Plan</td><td><span class="badge fair">Fair</span></td><td>Shown on floor plan edged in red. Cl 21 references F12/F12A for reconfiguration works — landlord retains boundary revision rights.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="pb4-cat-title">Category 2 — Key Commercial Terms (26 items): 8 Good, 14 Fair, 4 Poor</div>
+  <table class="risk-table">
+    <thead><tr><th style="width:180px;">Item</th><th>Clause</th><th>Rating</th><th>Key Point</th></tr></thead>
+    <tbody>
+      <tr><td>Lease Term</td><td>Sch 1.3(a)</td><td><span class="badge fair">Fair</span></td><td>3 years — moderate commitment without flexibility</td></tr>
+      <tr><td>Term Commencement</td><td>Sch 1.3(b)(i)</td><td><span class="badge good">Good</span></td><td>Est. 24 Oct 2026 or earlier commencement of business</td></tr>
+      <tr><td>Rent Commencement</td><td>LOO §10</td><td><span class="badge fair">Fair</span></td><td>First payment on or before Term Commencement. No additional rent-free period beyond fitting out.</td></tr>
+      <tr><td>Rent-Free Period</td><td>Sch 1.8</td><td><span class="badge fair">Fair</span></td><td>4 weeks fitting out only. Short for a full boutique build-out.</td></tr>
+      <tr><td>Tenant Break Option</td><td>N/A</td><td><span class="badge poor">Poor</span></td><td>NO break clause. 3-year lock-in. Critical gap.</td></tr>
+      <tr><td>Base Rent</td><td>Sch 2.1</td><td><span class="badge fair">Fair</span></td><td>SGD 32.50–34.50/sqft/mth. Market rate for Paragon L2 but at upper range.</td></tr>
+      <tr><td>Rent Escalation</td><td>Sch 2.1</td><td><span class="badge good">Good</span></td><td>Fixed ~3%/yr step-ups. Transparent and capped.</td></tr>
+      <tr><td>Rent Review</td><td>N/A</td><td><span class="badge good">Good</span></td><td>No open market review — fixed escalation only.</td></tr>
+      <tr><td>Turnover Rent</td><td>Sch 2.4</td><td><span class="badge good">Good</span></td><td>1% of NTO. Low by market standards.</td></tr>
+      <tr><td>TO Reporting</td><td>LOO §9</td><td><span class="badge fair">Fair</span></td><td>Monthly with daily breakdown via portal. Reporting burden is moderate.</td></tr>
+      <tr><td>Audit Right</td><td>LA D1.4</td><td><span class="badge fair">Fair</span></td><td>Landlord audit with 3 days' notice. Cost to tenant if &gt;3% understatement. Records kept 3 years post-term.</td></tr>
+      <tr><td>Payment Terms</td><td>LOO §10</td><td><span class="badge good">Good</span></td><td>Monthly in advance by GIRO. Standard.</td></tr>
+      <tr><td>Security Deposit</td><td>Sch 1.5</td><td><span class="badge fair">Fair</span></td><td>SGD 65,970 (~3.3 months base). Refunded free of interest after term expiry.</td></tr>
+      <tr><td>Service Charge</td><td>Sch 2.2</td><td><span class="badge fair">Fair</span></td><td>SGD 2.00/sqft. Subject to increase by landlord notice (with aggregate cap).</td></tr>
+      <tr><td>Management Fees</td><td>Included in SC</td><td><span class="badge good">Good</span></td><td>Included in service charge, not separate.</td></tr>
+      <tr><td>Utilities</td><td>LA D4</td><td><span class="badge fair">Fair</span></td><td>Tenant direct application. Bulk electricity purchase at landlord's discretion — pass-through.</td></tr>
+      <tr><td>Other Charges</td><td>LA D3</td><td><span class="badge fair">Fair</span></td><td>Property tax passed to tenant. Standard but adds cost exposure.</td></tr>
+      <tr><td>Late Opening Penalty</td><td>Sch 1.12</td><td><span class="badge fair">Fair</span></td><td>SGD 722.96/day. No grace period specified in LOO.</td></tr>
+      <tr><td>Handover Condition</td><td>LOO §14</td><td><span class="badge fair">Fair</span></td><td>As-is shell. Landlord not liable for delay costs or profit loss.</td></tr>
+      <tr><td>Pre-Opening Obligations</td><td>LOO §15</td><td><span class="badge fair">Fair</span></td><td>Plans submitted 3 months before works. All costs borne by tenant including landlord's consultant fees.</td></tr>
+      <tr><td>Min Guaranteed Sales</td><td>Sch 1.4</td><td><span class="badge good">Good</span></td><td>SGD 90,000/mth — not binding, no breach consequence.</td></tr>
+      <tr><td>Marketing Levy</td><td>Sch 2.3</td><td><span class="badge good">Good</span></td><td>SGD 0.50/sqft = SGD 285/mth. Low.</td></tr>
+      <tr><td>Price &amp; Return Policy</td><td>N/A</td><td><span class="badge good">Good</span></td><td>Not restricted.</td></tr>
+      <tr><td>Insurance</td><td>LOO §17, LA D5</td><td><span class="badge fair">Fair</span></td><td>Comprehensive requirements: public liability $2M + plate glass + property. All at tenant's cost with landlord approval.</td></tr>
+      <tr><td>Surrender Condition</td><td>LOO §16</td><td><span class="badge poor">Poor</span></td><td>Full reinstatement to original state "to Landlord's satisfaction" — subjective standard. Plus early termination penalty formula (F×R×B/T).</td></tr>
+      <tr><td>Radius/Exclusivity</td><td>N/A</td><td><span class="badge good">Good</span></td><td>No radius clause or exclusivity restriction.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="pb4-cat-title">Category 3 — Key Contract Terms (15 items): 2 Good, 11 Fair, 2 Poor</div>
+  <table class="risk-table">
+    <thead><tr><th style="width:180px;">Item</th><th>Clause</th><th>Rating</th><th>Key Point</th></tr></thead>
+    <tbody>
+      <tr><td>LL Early Termination</td><td>LOO §25(a)</td><td><span class="badge poor">Poor</span></td><td>Landlord can unilaterally extend term by up to 4 months. Tenant bound to continue on same terms. One-sided.</td></tr>
+      <tr><td>LL Relocation Right</td><td>LOO §21, LA F12</td><td><span class="badge fair">Fair</span></td><td>References LA Cl F12/F12A for reconfiguration. Standard mall clause but landlord retains right.</td></tr>
+      <tr><td>LL Construction/Works</td><td>LOO §20</td><td><span class="badge poor">Poor</span></td><td>Landlord reserves unrestricted right. No liability for damages/costs/consequential losses. No notice requirement.</td></tr>
+      <tr><td>Timing of Works</td><td>LOO §19</td><td><span class="badge fair">Fair</span></td><td>Landlord access with "prior notice" but no minimum notice period or business-hours restriction.</td></tr>
+      <tr><td>Repairing Obligation</td><td>LOO §16</td><td><span class="badge fair">Fair</span></td><td>Full reinstatement at lease end. Internal repairs during term at tenant's cost.</td></tr>
+      <tr><td>Structural Repair</td><td>Not tenant's obligation</td><td><span class="badge good">Good</span></td><td>Structural elements remain landlord's responsibility.</td></tr>
+      <tr><td>Indemnity</td><td>LOO §22</td><td><span class="badge fair">Fair</span></td><td>Full indemnity on legal costs. Broad but standard in Singapore mall leases.</td></tr>
+      <tr><td>Force Majeure</td><td>Not addressed</td><td><span class="badge fair">Fair</span></td><td>No FM clause in LOO. LA may contain provisions. Risk of no rent abatement during FM events.</td></tr>
+      <tr><td>Right to Renew</td><td>Sch 1.3(c)</td><td><span class="badge fair">Fair</span></td><td>2-year option on mutually agreed terms. Not guaranteed — landlord can refuse.</td></tr>
+      <tr><td>Security of Tenure</td><td>N/A</td><td><span class="badge fair">Fair</span></td><td>No statutory security in Singapore. Contractual renewal right only.</td></tr>
+      <tr><td>Assignment by LL</td><td>LOO §25(c)</td><td><span class="badge fair">Fair</span></td><td>LOO not assignable by tenant. No restriction on landlord assignment/sale.</td></tr>
+      <tr><td>Change of Control</td><td>LOO §12, Sch 1.6</td><td><span class="badge fair">Fair</span></td><td>Min Paid-Up Capital SGD 300,000 required. If not maintained, additional deposit of SGD 65,970 due within 7 days.</td></tr>
+      <tr><td>Succession by New Owner</td><td>Not addressed</td><td><span class="badge fair">Fair</span></td><td>Trust structure provides continuity. New trustee would inherit obligations.</td></tr>
+      <tr><td>Environmental/ESG</td><td>Not addressed</td><td><span class="badge good">Good</span></td><td>No ESG obligations imposed. No compliance burden.</td></tr>
+      <tr><td>Special Conditions</td><td>Sch 4</td><td><span class="badge fair">Fair</span></td><td>Conditional on existing tenant vacating by 25 Sep 2026. Risk of delay or revocation — but landlord also cancels without claims, providing clean exit.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     APPENDIX E — BENCHMARK (PB#5)
+══════════════════════════════════════════════ -->
+<div class="appendix-card">
+  <h3>Appendix E — Benchmark Comparison (PB#5)</h3>
+  <p style="margin-bottom:12px;font-size:13px;">Scenario A — Relocation. Benchmark: Prior APM Singapore Paragon lease (#02-08, 2021–2026). Evaluation: <span class="badge high">Above Market / Landlord-Favourable (Score 8)</span></p>
+  <table class="risk-table">
+    <thead><tr><th>Aspect</th><th>Prior Lease (#02-08)</th><th>New Lease (#02-11 LOO)</th><th>Difference / Impact</th></tr></thead>
+    <tbody>
+      <tr><td>Base Rent (EUR/yr)</td><td>~EUR 124,411</td><td>~EUR 159,261 (Yr1 at SGD 32.50)</td><td><span class="badge high">+28% increase</span> — Significant rent escalation well above inflation and sales growth.</td></tr>
+      <tr><td>Total Rent incl. TO (EUR/yr)</td><td>~EUR 138,214</td><td>~EUR 166,761 (Yr1)</td><td><span class="badge high">+20.7% increase</span> — Total occupancy cost rising faster than revenue.</td></tr>
+      <tr><td>Rent-to-Sales Ratio</td><td>~19.5% (2025)</td><td>~22.2% (Yr1)</td><td><span class="badge high">+2.7pp deterioration</span> — Moving from "high" to "very high" burden bracket.</td></tr>
+      <tr><td>Sales Growth</td><td>EUR 710,424 (2025)</td><td>EUR 750,000 (Budget)</td><td>+5.6% growth projected. Rent growth vastly outpaces sales growth.</td></tr>
+      <tr><td>Unit Size</td><td>678 sqft (#02-08)</td><td>570 sqft (#02-11)</td><td>–16% smaller unit. Per-sqft rent higher; absolute rent lower due to smaller area.</td></tr>
+      <tr><td>Rent per sqft (SGD/mth)</td><td>SGD 21.50 (latest extension)</td><td>SGD 32.50 (Yr1)</td><td><span class="badge high">+51% per-sqft increase</span>. PNL proposed SGD 35/sqft — LOO negotiated down to SGD 32.50.</td></tr>
+      <tr><td>Service Charge</td><td>SGD 2.00/sqft</td><td>SGD 2.00/sqft</td><td><span class="badge good">Unchanged</span> — Same rate maintained.</td></tr>
+      <tr><td>Turnover Rent</td><td>17% of NTO minus Base+SC+A&amp;P (top-up formula)</td><td>1% of NTO (simple override)</td><td><span class="badge good">Improved</span> — Much simpler and lower turnover rent structure.</td></tr>
+      <tr><td>Lease Term</td><td>2 years + extensions</td><td>3 years + 2 yr option</td><td>Longer initial term provides stability but increases lock-in risk without break clause.</td></tr>
+      <tr><td>Tenant Break</td><td>None in prior lease</td><td>None</td><td>Consistent — neither lease offers tenant break.</td></tr>
+      <tr><td>Fitting Out</td><td>N/A (existing store)</td><td>4 weeks rent-free + COPEX EUR 209,735</td><td>Significant capital expenditure for relocation. COPEX payback 1.86 years (within lease term).</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     APPENDIX F — RISK MITIGATION (PB#6)
+══════════════════════════════════════════════ -->
+<div class="appendix-card">
+  <h3>Appendix F — Integrated Risk Mitigation Strategy (PB#6)</h3>
+  <table class="risk-table">
+    <thead><tr><th>Risk Category</th><th>Description</th><th>Level</th><th>Mitigation Strategy</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Rent Level / Affordability</strong></td><td>Rent-to-TO ratio at 21.6% is very high. Rent increase of ~23–28% vs prior lease significantly outpaces projected sales growth of 5.6%.</td><td><span class="badge high">High</span></td><td>1) Negotiate base rent reduction to SGD 30–31/sqft for Y1. 2) Request stepped rent with first 6 months at reduced rate. 3) Negotiate additional rent-free period (2–3 months). 4) Cap total occupancy cost at 18% of NTO.</td></tr>
+      <tr><td><strong>Break &amp; Exit Flexibility</strong></td><td>No tenant break clause for 3-year term. Combined with LL's unilateral 4-month extension right, tenant has minimal exit flexibility.</td><td><span class="badge high">High</span></td><td>1) Insert 18-month break clause with 6 months' written notice. 2) If break not achievable, negotiate mutual termination right with 3-month penalty. 3) Remove or limit LL's unilateral extension right (Cl 25a).</td></tr>
+      <tr><td><strong>Landlord Construction/Works</strong></td><td>Unrestricted right to carry out works with zero liability. No notice period or compensation for disruption.</td><td><span class="badge high">High</span></td><td>1) Insert minimum 30-day written notice requirement. 2) Restrict major works to non-business hours. 3) Add rent abatement provision for material disruption (&gt;48 hrs affecting business). 4) Cap tenant's reinstatement cost exposure.</td></tr>
+      <tr><td><strong>Indemnity Exposure</strong></td><td>One-sided full indemnity. Tenant bears all legal costs including enforcement actions by landlord.</td><td><span class="badge medium">Medium</span></td><td>1) Limit to direct losses from tenant's negligence or breach. 2) Exclude consequential losses. 3) Seek mutual indemnity or cap at 12 months' rent.</td></tr>
+      <tr><td><strong>Conditional Possession</strong></td><td>Lease conditional on existing tenant vacating by 25 Sep 2026. If not met, landlord can unilaterally cancel. APM has paid SGD 87,715.50 upfront.</td><td><span class="badge medium">Medium</span></td><td>1) Negotiate automatic deposit refund if condition not met (no explicit refund clause currently). 2) Insert long-stop date with guaranteed refund of all monies. 3) Request periodic status updates on existing tenant's handover timeline.</td></tr>
+      <tr><td><strong>Reinstatement</strong></td><td>Full reinstatement "to Landlord's satisfaction" — subjective standard. Early termination penalty formula adds exposure.</td><td><span class="badge medium">Medium</span></td><td>1) Define reinstatement scope explicitly (refer to Schedule of Condition at possession). 2) Cap reinstatement cost. 3) Negotiate dilapidation payment option in lieu of physical reinstatement.</td></tr>
+      <tr><td><strong>Insurance &amp; Compliance</strong></td><td>Comprehensive insurance requirements. Landlord has approval rights over insurers and policies.</td><td><span class="badge low">Low</span></td><td>Standard requirements. Ensure global APM insurance program covers Singapore requirements. Budget SGD 5,000–8,000/yr for insurance.</td></tr>
+      <tr><td><strong>Reporting Burden</strong></td><td>Monthly NTO statements with daily breakdown. Yearly audited statements. Mall POS System participation. Multiple reporting channels.</td><td><span class="badge low">Low</span></td><td>Ensure POS system integration is feasible. Budget for auditor costs for yearly statement (est. SGD 3,000–5,000/yr).</td></tr>
+      <tr><td><strong>COPEX Risk</strong></td><td>Total COPEX EUR 209,735 (INIT + Display + Reinstatement). Proxy payback 1.86 years — within 3-year lease term but leaves limited margin if early exit required.</td><td><span class="badge medium">Medium</span></td><td>1) Secure break clause to protect COPEX investment. 2) Negotiate landlord contribution to fit-out (e.g., SGD 50–100/sqft). 3) Ensure fitting out deposit (SGD 5,000) refund terms are clear and timely.</td></tr>
+      <tr><td><strong>Succession / Assignment</strong></td><td>LOO not assignable. No intra-group transfer right. Minimum paid-up capital requirement of SGD 300,000.</td><td><span class="badge low">Low</span></td><td>Ensure APM Retail (Singapore) maintains minimum capital. Verify corporate structure compliance before signing LA.</td></tr>
+    </tbody>
+  </table>
+  <div style="margin-top:20px;padding:16px;background:#f8f9fa;border-radius:8px;">
+    <h4 style="margin-bottom:8px;font-size:14px;color:var(--dark);">Value × Risk Matrix Positioning</h4>
+    <p style="font-size:13px;line-height:1.6;">
+      <strong>Value Assessment:</strong> Medium-High. Paragon is a prime Orchard Road location with strong brand alignment for APM Monaco. Projected turnover of EUR 750,000 positions this as a significant boutique in the APM Singapore portfolio.<br>
+      <strong>Risk Assessment:</strong> Medium. Key risks centre on rent affordability, lack of exit flexibility, and one-sided landlord rights. However, the landlord (Paragon Trust) is institutional and low-risk, and the building/location is prime.<br>
+      <strong>Positioning:</strong> Upper-left quadrant (Medium-High Value, Medium Risk). The strategic value of maintaining an Orchard Road presence justifies proceeding, but the commercial terms need negotiation to bring the risk-reward balance into acceptable range.
+    </p>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     DISCLAIMER + FOOTER
+══════════════════════════════════════════════ -->
+<div class="disclaimer">
+  <strong>⚠ Disclaimer:</strong> This document does not constitute legal, financial, or professional advice. It is an executive summary of risk factors identified during a fast-track review. All recommendations should be validated by qualified legal counsel and financial advisors before execution. The composite score and dimension ratings are based on methodology applied as of the report date and may change with new information.
+</div>
+
+<div class="report-footer">
+  APM Monaco — Global Retail Lease Fast Risk Review<br>
+  APM Singapore Paragon (#02-11) | 290 Orchard Road, Singapore 238859<br>
+  Generated: 19 March 2026 | Version 4 (Combined — Corrected Scoring + Full Appendices)
+</div>
+
+</div><!-- /container -->
+
+<!-- ══════════════════════════════════════════════
+     RADAR CHART SCRIPT
+══════════════════════════════════════════════ -->
+<script>
+const ctx = document.getElementById('radarChart').getContext('2d');
+const weights = [15, 10, 5, 15, 10, 8, 7, 10, 10, 10];
+new Chart(ctx, {
+  type: 'radar',
+  data: {
+    labels: [
+      'D1: Jurisdiction (5)',
+      'D2: Landlord (2)',
+      'D3: Building (2)',
+      'D4: Contract (6)',
+      'D5: Benchmark (8)',
+      'D6: Store Type (7)',
+      'D7: Lease Term (4)',
+      'D8: Store Grade (6)',
+      'D9: Rent (8)',
+      'D10: COPEX (4)'
+    ],
+    datasets: [{
+      label: 'v4 Scores (5.39)',
+      data: [5, 2, 2, 6, 8, 7, 4, 6, 8, 4],
+      backgroundColor: 'rgba(230,126,34,0.18)',
+      borderColor: '#e67e22',
+      borderWidth: 2.5,
+      pointBackgroundColor: function(ctx) {
+        const v = ctx.raw;
+        if (v <= 3) return '#27ae60';
+        if (v <= 6) return '#f39c12';
+        return '#e74c3c';
+      },
+      pointBorderColor: '#fff',
+      pointBorderWidth: 2,
+      pointRadius: 5,
+      pointHoverRadius: 7
+    }, {
+      label: 'v1 Original (5.15)',
+      data: [6, 2, 2, 6, 7, 7, 7, 6, 8, 1],
+      backgroundColor: 'rgba(44,62,80,0.06)',
+      borderColor: 'rgba(44,62,80,0.35)',
+      borderWidth: 1.5,
+      borderDash: [5, 5],
+      pointBackgroundColor: 'rgba(44,62,80,0.35)',
+      pointBorderColor: '#fff',
+      pointBorderWidth: 1,
+      pointRadius: 3,
+      pointHoverRadius: 5
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 16 } },
+      tooltip: {
+        callbacks: {
+          label: function(ctx) {
+            if (ctx.datasetIndex === 0) {
+              const w = weights[ctx.dataIndex];
+              const s = ctx.raw;
+              return `v4: ${s}/10 | Weight: ${w}% | Weighted: ${(s*w/100).toFixed(2)}`;
+            }
+            return `v1 Original: ${ctx.raw}/10`;
+          }
+        }
+      }
+    },
+    scales: {
+      r: {
+        min: 0, max: 10,
+        ticks: { stepSize: 2, font: { size: 10 }, color: '#aaa' },
+        grid: { color: 'rgba(0,0,0,0.07)' },
+        angleLines: { color: 'rgba(0,0,0,0.1)' },
+        pointLabels: { font: { size: 10 }, color: '#555' }
+      }
+    }
+  }
+});
+</script>
+</body>
+</html>
